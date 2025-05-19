@@ -9,7 +9,7 @@ import retrofit2.http.Body
 import retrofit2.http.POST
 
 object RetrofitClient {
-    private const val BASE_URL = "http://YOUR_IP:5000/"
+    private const val BASE_URL = "http://192.168.1.101:5000/"
 
     val instance: ApiService by lazy {
         val retrofit = Retrofit.Builder()

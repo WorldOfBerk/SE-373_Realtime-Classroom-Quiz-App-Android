@@ -34,7 +34,6 @@ class CreateQuizActivity : AppCompatActivity() {
         teacherId = intent.getStringExtra("teacher_id") ?: ""
         sessionId = intent.getIntExtra("session_id", -1)
 
-        // Tip değişim dinleyici
         radioQuizType.setOnCheckedChangeListener { _, checkedId ->
             selectedType = when (checkedId) {
                 R.id.radioPoll -> "poll"

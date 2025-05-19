@@ -2,6 +2,7 @@ package com.example.classroomquizapp
 
 import android.os.Bundle
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.example.classroomquizapp.api.RetrofitClient
 import com.example.classroomquizapp.model.AnswerRequest
@@ -19,17 +20,50 @@ class AnswerQuizActivity : AppCompatActivity() {
 
     private var quizId: Int = -1
     private var selectedOptionIndex: Int = -1
-    private lateinit var studentId: String  // Giriş yapan öğrenci ID'si
+    private lateinit var studentId: String
+    private var sessionId: Int = -1  // class dışına
+
+    private fun showFeedbackDialog(sessionId: Int) {
+        val etFeedback = EditText(this)
+        etFeedback.hint = "Write your feedback..."
+
+        AlertDialog.Builder(this)
+            .setTitle("Submit Anonymous Feedback")
+            .setView(etFeedback)
+            .setPositiveButton("Submit") { _, _ ->
+                val message = etFeedback.text.toString().trim()
+                if (message.isNotEmpty()) {
+                    val body = mapOf(
+                        "session_id" to sessionId.toString(),
+                        "message" to message
+                    )
+
+                    RetrofitClient.instance.submitFeedback(body).enqueue(object : Callback<GenericResponse> {
+                        override fun onResponse(call: Call<GenericResponse>, response: Response<GenericResponse>) {
+                            Toast.makeText(this@AnswerQuizActivity, "✅ Feedback submitted", Toast.LENGTH_SHORT).show()
+                            finish()
+                        }
+
+                        override fun onFailure(call: Call<GenericResponse>, t: Throwable) {
+                            Toast.makeText(this@AnswerQuizActivity, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    })
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_answer_quiz)
+        sessionId = intent.getIntExtra("session_id", -1)
 
         txtQuestion = findViewById(R.id.txtQuestion)
         radioGroup = findViewById(R.id.radioOptions)
         btnSubmit = findViewById(R.id.btnSubmitAnswer)
 
-        // Intent ile gelen verileri al
         quizId = intent.getIntExtra("quiz_id", -1)
         val question = intent.getStringExtra("question") ?: ""
         val options = intent.getStringArrayListExtra("options") ?: listOf()
@@ -37,7 +71,6 @@ class AnswerQuizActivity : AppCompatActivity() {
 
         txtQuestion.text = question
 
-        // Seçenekleri dinamik olarak ekle
         options.forEachIndexed { index, option ->
             val radioButton = RadioButton(this)
             radioButton.text = option
@@ -55,7 +88,7 @@ class AnswerQuizActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Cevap gönderme isteği oluştur
+
             val body = AnswerRequest(
                 quiz_id = quizId,
                 student_id = studentId,
@@ -68,19 +101,33 @@ class AnswerQuizActivity : AppCompatActivity() {
                         val isCorrect = response.body()!!.is_correct
                         Toast.makeText(
                             this@AnswerQuizActivity,
-                            if (isCorrect) "✅ Doğru cevap!" else "❌ Yanlış cevap!",
+                            if (isCorrect) "✅ Correct! +5 points" else "❌ Wrong answer",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        showFeedbackDialog(sessionId)
+
+                    } else if (response.code() == 409) {
+                        Toast.makeText(
+                            this@AnswerQuizActivity,
+                            "⚠️ You already answered this quiz",
                             Toast.LENGTH_SHORT
                         ).show()
                         finish()
+
                     } else {
-                        Toast.makeText(this@AnswerQuizActivity, "Gönderim başarısız", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@AnswerQuizActivity,
+                            "Server error: ${response.code()}",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
 
                 override fun onFailure(call: Call<AnswerResponse>, t: Throwable) {
-                    Toast.makeText(this@AnswerQuizActivity, "Hata: ${t.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@AnswerQuizActivity, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
                 }
             })
+
 
         }
     }

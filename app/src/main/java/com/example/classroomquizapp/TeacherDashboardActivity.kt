@@ -7,6 +7,7 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.example.classroomquizapp.api.RetrofitClient
 import com.example.classroomquizapp.model.CreatedQuizResponse
+import com.example.classroomquizapp.model.FeedbackItem
 import com.example.classroomquizapp.model.GenericResponse
 import com.example.classroomquizapp.model.SessionResponse
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -93,6 +94,30 @@ class TeacherDashboardActivity : AppCompatActivity() {
             }
         })
     }
+    private fun loadFeedbacks() {
+        val body = mapOf("teacher_id" to teacherId)
+
+        RetrofitClient.instance.getFeedbackByTeacher(body).enqueue(object : Callback<List<FeedbackItem>> {
+            override fun onResponse(call: Call<List<FeedbackItem>>, response: Response<List<FeedbackItem>>) {
+                if (response.isSuccessful) {
+                    val list = response.body()
+                    val container = findViewById<LinearLayout>(R.id.feedbackContainer)
+                    container.removeAllViews()
+
+                    list?.forEach { item ->
+                        val textView = TextView(this@TeacherDashboardActivity)
+                        textView.text = "📬 ${item.title}: \"${item.message}\" (${item.submitted_at})"
+                        textView.setPadding(8, 8, 8, 8)
+                        container.addView(textView)
+                    }
+                }
+            }
+
+            override fun onFailure(call: Call<List<FeedbackItem>>, t: Throwable) {
+                Toast.makeText(this@TeacherDashboardActivity, "Failed to load feedbacks", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
 
 
 
@@ -170,5 +195,6 @@ class TeacherDashboardActivity : AppCompatActivity() {
             }
         }
         loadCreatedQuizzes()
+        loadFeedbacks()
     }
 }
